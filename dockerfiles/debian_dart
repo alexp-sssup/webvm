@@ -1,0 +1,39 @@
+FROM --platform=i386 i386/debian:buster
+ARG DEBIAN_FRONTEND=noninteractive
+
+# System update and installing required packages
+RUN apt-get clean && apt-get update && apt-get -y upgrade && \
+    apt-get -y install apt-utils gcc python3 vim unzip ruby nodejs \
+    fakeroot dbus base whiptail hexedit patch wamerican ucf manpages \
+    file luajit make lua50 dialog curl less cowsay netcat-openbsd \
+    apt-transport-https wget
+
+# Download and install Dart SDK
+RUN wget https://storage.googleapis.com/dart-archive/channels/stable/release/3.5.0/sdk/dartsdk-linux-ia32-release.zip
+RUN mkdir -p /myinstall && unzip ./dartsdk-linux-ia32-release.zip -d /myinstall/
+
+# Add Dart to PATH for all subsequent steps and users
+ENV PATH="$PATH:/myinstall/dart-sdk/bin"
+
+# Install Dart packages
+RUN dart pub global activate webdev
+
+ENV PATH="$PATH:$HOME/.pub-cache/bin"
+
+
+# Create a non-root user
+RUN useradd -m user && echo "user:password" | chpasswd
+
+# Copy examples and set permissions
+COPY --chown=user:user ./examples /home/user/examples
+RUN chmod -R +x /home/user/examples/lua
+
+# Set work directory and environment variables
+WORKDIR /home/user/
+ENV HOME="/home/user" TERM="xterm" USER="user" SHELL="/bin/bash" EDITOR="vim" LANG="en_US.UTF-8" LC_ALL="C"
+
+# Set root password
+RUN echo 'root:password' | chpasswd
+
+# Default command
+CMD [ "/bin/bash" ]
